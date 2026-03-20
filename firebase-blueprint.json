@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (income or expense)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "date": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["amount", "category", "type", "date", "userId"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "A monthly budget for a category",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "spent": { "type": "number" },
+        "userId": { "type": "string" }
+      },
+      "required": ["category", "limit", "userId"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "A member of the organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "member"] },
+        "memberType": { "type": "string", "enum": ["General Member", "Lifetime Member"] },
+        "email": { "type": "string", "format": "email" },
+        "bloodGroup": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "joinedDate": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "role", "memberType", "email", "bloodGroup", "phoneNumber", "address", "joinedDate", "userId"]
+    },
+    "News": {
+      "title": "News",
+      "description": "A news item or announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "author": { "type": "string" },
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "Optional image URL or base64 data" }
+      },
+      "required": ["title", "content", "date", "author", "userId"]
+    },
+    "Donor": {
+      "title": "Donor",
+      "description": "A blood donor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "district": { "type": "string" },
+        "lastDonated": { "type": "string", "format": "date-time" },
+        "joinedDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "bloodGroup", "phoneNumber", "address", "district", "joinedDate", "userId"]
+    },
+    "FoundationRule": {
+      "title": "FoundationRule",
+      "description": "A foundation rule or guideline PDF",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "pdfData": { "type": "string", "description": "Base64 encoded PDF data" },
+        "uploadedBy": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "pdfData", "uploadedBy", "date"]
+    },
+    "MemberDonation": {
+      "title": "MemberDonation",
+      "description": "A monthly donation record for a member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "amount": { "type": "number" },
+        "month": { "type": "string", "description": "YYYY-MM format" },
+        "date": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified"] }
+      },
+      "required": ["memberId", "memberName", "amount", "month", "date", "paymentMethod", "status"]
+    },
+    "PublicDonation": {
+      "title": "PublicDonation",
+      "description": "A donation record from a public donor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "donorName": { "type": "string" },
+        "donorPhone": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified"] }
+      },
+      "required": ["donorName", "donorPhone", "amount", "date", "paymentMethod", "transactionId", "status"]
+    },
+    "SlideshowImage": {
+      "title": "SlideshowImage",
+      "description": "An image for the news slideshow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string", "description": "Image URL or base64 data" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "uploadedBy": { "type": "string" }
+      },
+      "required": ["url", "date", "uploadedBy"]
+    }
+  },
+  "firestore": {
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transactions"
+    },
+    "/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "User budgets"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "User members"
+    },
+    "/news/{newsId}": {
+      "schema": "News",
+      "description": "User news items"
+    },
+    "/donors/{donorId}": {
+      "schema": "Donor",
+      "description": "Public blood donors"
+    },
+    "/rules/{ruleId}": {
+      "schema": "FoundationRule",
+      "description": "Foundation rules and guidelines"
+    },
+    "/memberDonations/{donationId}": {
+      "schema": "MemberDonation",
+      "description": "Member monthly donations"
+    },
+    "/publicDonations/{donationId}": {
+      "schema": "PublicDonation",
+      "description": "Public donations"
+    },
+    "/slideshow/{imageId}": {
+      "schema": "SlideshowImage",
+      "description": "Slideshow images for the news section"
+    }
+  }
+}

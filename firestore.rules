@@ -1,0 +1,282 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: transactions
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - id: string (required)
+    //   - amount: number (required, positive)
+    //   - category: string (required)
+    //   - type: string (required, 'income' or 'expense')
+    //   - date: string (required, ISO 8601)
+    //   - description: string (optional)
+    //   - userId: string (required, must match auth.uid)
+    //
+    // Collection: budgets
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - category: string (required)
+    //   - limit: number (required, positive)
+    //   - spent: number (required)
+    //   - userId: string (required, must match auth.uid)
+    //
+    // Collection: members
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - role: string (required, 'admin' or 'member')
+    //   - memberType: string (required, 'General Member' or 'Lifetime Member')
+    //   - email: string (required, valid email)
+    //   - bloodGroup: string (required)
+    //   - phoneNumber: string (required)
+    //   - address: string (required)
+    //   - joinedDate: string (required, ISO 8601)
+    //   - userId: string (required, must match auth.uid)
+    //
+    // Collection: news
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - content: string (required)
+    //   - date: string (required, ISO 8601)
+    //   - author: string (required)
+    //   - userId: string (required, must match auth.uid)
+    //
+    // Collection: donors
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - bloodGroup: string (required)
+    //   - phoneNumber: string (required)
+    //   - address: string (required)
+    //   - district: string (required)
+    //   - lastDonated: string (optional, ISO 8601)
+    //   - joinedDate: string (required, ISO 8601)
+    //   - userId: string (required, must match auth.uid)
+    //
+    // Collection: rules
+    // Document ID: auto-generated or custom
+    // Fields:
+    //   - title: string (required)
+    //   - pdfData: string (required, base64 PDF)
+    //   - uploadedBy: string (required)
+    //   - date: string (required, ISO 8601)
+    //
+    // Collection: memberDonations
+    // Document ID: auto-generated
+    // Fields:
+    //   - memberId: string (required)
+    //   - memberName: string (required)
+    //   - amount: number (required)
+    //   - month: string (required, YYYY-MM)
+    //   - date: string (required, ISO 8601)
+    //   - paymentMethod: string (required)
+    //   - transactionId: string (optional)
+    //   - status: string (required, 'pending' or 'verified')
+    //
+    // Collection: publicDonations
+    // Document ID: auto-generated
+    // Fields:
+    //   - donorName: string (required)
+    //   - donorPhone: string (required)
+    //   - amount: number (required)
+    //   - date: string (required, ISO 8601)
+    //   - paymentMethod: string (required)
+    //   - transactionId: string (required)
+    //   - message: string (optional)
+    //   - status: string (required, 'pending' or 'verified')
+    //
+    // Collection: slideshow
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string (required)
+    //   - url: string (required)
+    //   - title: string (optional)
+    //   - description: string (optional)
+    //   - date: string (required, ISO 8601)
+    //   - uploadedBy: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.email != null &&
+             request.auth.token.email.lower() == "chaishepru303@gmail.com" && 
+             request.auth.token.email_verified == true;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTransaction(data) {
+      return data.amount is number && data.amount > 0 &&
+             data.category is string &&
+             data.type in ['income', 'expense'] &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidBudget(data) {
+      return data.category is string &&
+             data.limit is number && data.limit >= 0 &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidMember(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.role in ['admin', 'member'] &&
+             data.memberType in ['General Member', 'Lifetime Member'] &&
+             isValidEmail(data.email) &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidNews(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.content is string && data.content.size() > 0 &&
+             data.author is string &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidDonor(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.bloodGroup is string &&
+             data.phoneNumber is string &&
+             data.userId is string;
+    }
+
+    function isValidRule(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.pdfData is string && data.pdfData.size() > 0 &&
+             data.uploadedBy is string;
+    }
+
+    function isValidMemberDonation(data) {
+      return data.keys().hasAll(['memberId', 'memberName', 'amount', 'month', 'date', 'paymentMethod', 'status']) &&
+             data.keys().hasOnly(['memberId', 'memberName', 'amount', 'month', 'date', 'paymentMethod', 'transactionId', 'status']) &&
+             data.memberId is string &&
+             data.memberName is string &&
+             data.amount is number && data.amount > 0 &&
+             data.month is string &&
+             data.date is string &&
+             data.paymentMethod is string &&
+             (!('transactionId' in data) || data.transactionId is string) &&
+             data.status in ['pending', 'verified'];
+    }
+
+    function isValidPublicDonation(data) {
+      return data.keys().hasAll(['donorName', 'donorPhone', 'amount', 'date', 'paymentMethod', 'status']) &&
+             data.keys().hasOnly(['donorName', 'donorPhone', 'amount', 'date', 'paymentMethod', 'transactionId', 'message', 'status']) &&
+             data.donorName is string &&
+             data.donorPhone is string &&
+             data.amount is number && data.amount > 0 &&
+             data.date is string &&
+             data.paymentMethod is string &&
+             (!('transactionId' in data) || data.transactionId is string) &&
+             (!('message' in data) || data.message is string) &&
+             data.status in ['pending', 'verified'];
+    }
+
+    function isValidSlideshowImage(data) {
+      return data.url is string && data.url.size() > 0 &&
+             data.date is string &&
+             data.uploadedBy is string;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /transactions/{transactionId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isDocOwner() && isValidTransaction(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /budgets/{budgetId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidBudget(request.resource.data);
+      allow update: if isDocOwner() && isValidBudget(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /members/{memberId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidMember(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidMember(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /news/{newsId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidNews(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidNews(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /donors/{donorId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidDonor(request.resource.data);
+      allow update: if isAdmin() || isDocOwner();
+      allow delete: if isAdmin() || isDocOwner();
+    }
+
+    match /memberDonations/{donationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMemberDonation(request.resource.data);
+      allow update: if isAdmin() && isValidMemberDonation(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /publicDonations/{donationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPublicDonation(request.resource.data);
+      allow update: if isAdmin() && isValidPublicDonation(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /rules/{ruleId} {
+      allow get, list: if isAuthenticated();
+      allow create: if isAdmin() && isValidRule(request.resource.data);
+      allow update: if isAdmin() && isValidRule(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /slideshow/{imageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidSlideshowImage(request.resource.data);
+      allow update: if isAdmin() && isValidSlideshowImage(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}
